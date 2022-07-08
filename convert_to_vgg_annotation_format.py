@@ -7,14 +7,19 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
+    "--data-path",
+    help="path to a folder containing the images",
+    default="data/test1",
+)
+parser.add_argument(
     "--images-path",
     help="path to a folder containing the images",
-    default="data/test1/segmentation_images",
+    default="segmentation_images",
 )
 parser.add_argument(
     "--masks-path",
     help="path to the annotations",
-    default="data/test1/segmentation_masks",
+    default="segmentation_masks",
 )
 
 args = parser.parse_args()
@@ -56,10 +61,9 @@ def generate_vgg_annotation(
         cv2.contourArea(table_contours[idx]) * res * res
         for idx in range(len(table_contours))
     ]
-    table_large_contour = []
-    for i in range(len(table_areas)):
-        if table_areas[i] > surf:
-            table_large_contour.append(table_contours[i])
+    table_large_contour = [
+        table_contours[i] for i in range(len(table_areas)) if table_areas[i] > surf
+    ]
     table_approx_contour = [
         cv2.approxPolyDP(c, eps * cv2.arcLength(c, True), True)
         for c in table_large_contour
@@ -69,10 +73,11 @@ def generate_vgg_annotation(
         cv2.contourArea(players_contours[idx]) * res * res
         for idx in range(len(players_contours))
     ]
-    players_large_contour = []
-    for i in range(len(players_areas)):
-        if players_areas[i] > surf:
-            players_large_contour.append(players_contours[i])
+    players_large_contour = [
+        players_contours[i]
+        for i in range(len(players_areas))
+        if players_areas[i] > surf
+    ]
     players_approx_contour = [
         cv2.approxPolyDP(c, eps * cv2.arcLength(c, True), True)
         for c in players_large_contour
@@ -82,10 +87,11 @@ def generate_vgg_annotation(
         cv2.contourArea(scoreboard_contours[idx]) * res * res
         for idx in range(len(scoreboard_contours))
     ]
-    scoreboard_large_contour = []
-    for i in range(len(scoreboard_areas)):
-        if scoreboard_areas[i] > surf:
-            scoreboard_large_contour.append(scoreboard_contours[i])
+    scoreboard_large_contour = [
+        scoreboard_contours[i]
+        for i in range(len(scoreboard_areas))
+        if scoreboard_areas[i] > surf
+    ]
     scoreboard_approx_contour = [
         cv2.approxPolyDP(c, eps * cv2.arcLength(c, True), True)
         for c in scoreboard_large_contour
@@ -93,34 +99,30 @@ def generate_vgg_annotation(
 
     # -------------------------------------------------------------------------------
     # BUILDING VGG ANNTOTATION TOOL ANNOTATIONS LIKE
-    if (
-        len(table_approx_contour) > 0
-        or len(players_approx_contour) > 0
-        or len(scoreboard_approx_contour) > 0
-    ):
-        table_regions = [0 for i in range(len(table_approx_contour))]
+    if table_approx_contour or players_approx_contour or scoreboard_approx_contour:
+        table_regions = [0] * len(table_approx_contour)
         for i in range(len(table_approx_contour)):
-            shape_attributes = {}
-            region_attributes = {}
-            region_attributes["class"] = "table"
-            regionsi = {}
-            shape_attributes["name"] = "polygon"
-            shape_attributes["all_points_x"] = table_approx_contour[i][:, 0][
-                :, 0
-            ].tolist()
+            region_attributes = {"class": "table"}
+            shape_attributes = {
+                "name": "polygon",
+                "all_points_x": table_approx_contour[i][:, 0][:, 0].tolist(),
+            }
+
             # https://stackoverflow.com/questions/26646362/numpy-array-is-not-json-serializable
             shape_attributes["all_points_y"] = table_approx_contour[i][:, 0][
                 :, 1
             ].tolist()
-            regionsi["shape_attributes"] = shape_attributes
-            regionsi["region_attributes"] = region_attributes
+            regionsi = {
+                "shape_attributes": shape_attributes,
+                "region_attributes": region_attributes,
+            }
+
             table_regions[i] = regionsi
 
-        players_regions = [0 for i in range(len(players_approx_contour))]
+        players_regions = [0] * len(players_approx_contour)
         for i in range(len(players_approx_contour)):
             shape_attributes = {}
-            region_attributes = {}
-            region_attributes["class"] = "players"
+            region_attributes = {"class": "players"}
             regionsi = {}
             shape_attributes["name"] = "polygon"
             shape_attributes["all_points_x"] = players_approx_contour[i][:, 0][
@@ -134,11 +136,10 @@ def generate_vgg_annotation(
             regionsi["region_attributes"] = region_attributes
             players_regions[i] = regionsi
 
-        scoreboard_regions = [0 for i in range(len(scoreboard_approx_contour))]
+        scoreboard_regions = [0] * len(scoreboard_approx_contour)
         for i in range(len(scoreboard_approx_contour)):
             shape_attributes = {}
-            region_attributes = {}
-            region_attributes["class"] = "scoreboard"
+            region_attributes = {"class": "scoreboard"}
             regionsi = {}
             shape_attributes["name"] = "polygon"
             shape_attributes["all_points_x"] = scoreboard_approx_contour[i][:, 0][
@@ -152,13 +153,11 @@ def generate_vgg_annotation(
             regionsi["region_attributes"] = region_attributes
             scoreboard_regions[i] = regionsi
 
-        regions = table_regions + players_regions + scoreboard_regions
-        regions = {index: region for index, region in enumerate(regions)}
+        regions = dict(enumerate(table_regions + players_regions + scoreboard_regions))
 
         size = os.path.getsize(image_path)
         name = os.path.basename(image_path) + str(size)
-        json_elt = {}
-        json_elt["filename"] = os.path.basename(image_path)
+        json_elt = {"filename": os.path.basename(image_path)}
         json_elt["size"] = str(size)
         json_elt["regions"] = regions
         json_elt["file_attributes"] = {}
@@ -184,19 +183,17 @@ def seperate_channels(image):
     return r, g, b
 
 
-num = os.path.dirname(args.images_path).strip("/")[-1]
+num = os.path.basename(args.data_path)[-1]
 suffix = "" if num == "1" else f"_{num}"
-print(suffix)
 final_dict = {}
-for image in tqdm(os.listdir(args.masks_path)):
-    final_dict.update(
-        generate_vgg_annotation(
-            os.path.join(args.images_path, image.strip(".png") + f"{suffix}.png"),
-            os.path.join(args.masks_path, image),
-        )
+for image in tqdm(os.listdir(os.path.join(args.data_path, args.masks_path))):
+    final_dict |= generate_vgg_annotation(
+        os.path.join(args.data_path, args.images_path, image.strip(".png") + f"{suffix}.png"),
+        os.path.join(args.data_path, args.masks_path, image),
     )
 
+
 with open(
-    os.path.join(os.path.dirname(args.images_path), "via_region_data.json"), "w"
+    os.path.join(os.path.dirname(os.path.join(args.data_path, args.images_path)), "via_region_data.json"), "w"
 ) as json_file:
     json.dump(final_dict, json_file)

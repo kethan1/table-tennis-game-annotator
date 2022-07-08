@@ -1,23 +1,58 @@
-import cv2
 import os
-import json
+import argparse
+import cv2
 
 
-basepath = "data/test2/"
-cap = cv2.VideoCapture(os.path.join(basepath, "game.mp4"))
-annotated_frames = os.listdir(os.path.join(basepath, "segmentation_masks"))
-with open(os.path.join(basepath, "ball_markup.json")) as ball_markup_file:
-    ball_pos_data = json.load(ball_markup_file)
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--data-path",
+    help="path to a folder containing the images",
+    default="data/test1/",
+)
+parser.add_argument(
+    "--game-file",
+    help="path to the annotations",
+    default="game.mp4",
+)
+parser.add_argument(
+    "--segmentation-images-folder",
+    help="path to the annotations",
+    default="segmentation_masks",
+)
+parser.add_argument(
+    "--output-folder",
+    help="path to the annotations",
+    default="segmentation_images",
+)
 
-num = basepath.strip("/")[-1]
-add_str = "" if num == "1" else f"_{num}"
+args = parser.parse_args()
+args.data_path = os.path.normpath(args.data_path)
+args.game_file = os.path.normpath(args.game_file)
+args.segmentation_images_folder = os.path.normpath(args.segmentation_images_folder)
+args.output_folder = os.path.normpath(args.output_folder)
+
+cap = cv2.VideoCapture(os.path.join(args.data_path, args.game_file))
+annotated_frames = os.listdir(
+    os.path.join(args.data_path, args.segmentation_images_folder)
+)
+
+num = os.path.basename(args.data_path)[-1]
+suffix = "" if num == "1" else f"_{num}"
+
 while True:
     ret, frame = cap.read()
     if not ret:
         break
     segmentation_mask_name = f"{int(cap.get(cv2.CAP_PROP_POS_FRAMES)) - 1}.png"
     if segmentation_mask_name in annotated_frames:
-        cv2.imwrite(os.path.join(basepath, "segmentation_images", f"{str(int(cap.get(cv2.CAP_PROP_POS_FRAMES)) - 1)}{add_str}.png"), frame)
+        cv2.imwrite(
+            os.path.join(
+                args.data_path,
+                args.output_folder,
+                f"{str(int(cap.get(cv2.CAP_PROP_POS_FRAMES)) - 1)}{suffix}.png",
+            ),
+            frame,
+        )
 
 cap.release()
 cv2.destroyAllWindows()
