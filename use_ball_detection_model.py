@@ -2,7 +2,7 @@ import os
 import argparse
 import cv2
 from model_abstractions import YOLOv5_Model
-from calculate_parabola_equation import calculate_parabola_equation
+from parabola_manipulation import calculate_parabola_equation
 
 
 parser = argparse.ArgumentParser()
@@ -33,18 +33,18 @@ while True:
     ret, frame = cap.read()
     if not ret:
         break
-    if i % parser.skip_frames != 0:
+    if i % args.skip_frames != 0:
         continue
     if predictions := ball_detection_model.predict_coords(
         ball_detection_model.process_opencv_image(frame)
     ):
-        ball = max(predictions, key=lambda x: x.confidence)
+        ball = max(predictions, key=lambda x: x["confidence"])
         xmin, ymin, xmax, ymax, confidence, name = ball.values()
         xmin, ymin, xmax, ymax = int(xmin), int(ymin), int(xmax), int(ymax)
         same_dir_ball_detections.append(ball)
-        prev_prev_ball = same_dir_ball_detections[-3]
-        prev_ball = same_dir_ball_detections[-2]
         if len(same_dir_ball_detections) > 2:
+            prev_prev_ball = same_dir_ball_detections[-3]
+            prev_ball = same_dir_ball_detections[-2]
             prev_x_moved = prev_prev_ball["xmin"] - prev_ball["xmin"]
             prev_y_moved = prev_prev_ball["ymin"] - prev_ball["ymin"]
             current_x_moved = prev_ball["xmin"] - xmin
@@ -63,7 +63,7 @@ while True:
                 for x in range(0, frame.shape[1], 5):
                     cv2.circle(
                         frame,
-                        (x, equation(x)),
+                        (x, int(equation(x))),
                         radius=2,
                         color=(0, 255, 0),
                         thickness=-1,
@@ -72,8 +72,8 @@ while True:
             cv2.circle(
                 frame,
                 (
-                    (detection["xmin"] + detection["xmax"]) // 2,
-                    (detection["ymin"] + detection["ymax"]) // 2,
+                    int((detection["xmin"] + detection["xmax"]) / 2),
+                    int((detection["ymin"] + detection["ymax"]) / 2),
                 ),
                 radius=9,
                 color=(0, 0, 255),
