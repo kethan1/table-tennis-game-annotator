@@ -188,12 +188,18 @@ suffix = "" if num == "1" else f"_{num}"
 final_dict = {}
 for image in tqdm(os.listdir(os.path.join(args.data_path, args.masks_path))):
     final_dict |= generate_vgg_annotation(
-        os.path.join(args.data_path, args.images_path, image.strip(".png") + f"{suffix}.png"),
+        os.path.join(
+            args.data_path, args.images_path, image.strip(".png") + f"{suffix}.png"
+        ),
         os.path.join(args.data_path, args.masks_path, image),
     )
 
 
 with open(
-    os.path.join(os.path.dirname(os.path.join(args.data_path, args.images_path)), "via_region_data.json"), "w"
+    os.path.join(
+        os.path.dirname(os.path.join(args.data_path, args.images_path)),
+        "via_region_data.json",
+    ),
+    "w",
 ) as json_file:
     json.dump(final_dict, json_file)

@@ -34,7 +34,7 @@ while True:
             (255, 0, 0),
             1,
         )
-        
+
         cv2.imshow("Frame", frame)
         cv2.waitKey(0)
 

@@ -51,7 +51,12 @@ while True:
 
     frame_name = str(int(cap.get(cv2.CAP_PROP_POS_FRAMES)) - 1)
     if frame_name in ball_pos_data:
-        cv2.imwrite(os.path.join(args.data_path, args.output_folder, f"{frame_name}{suffix}.png"), frame)
+        cv2.imwrite(
+            os.path.join(
+                args.data_path, args.output_folder, f"{frame_name}{suffix}.png"
+            ),
+            frame,
+        )
 
 cap.release()
 cv2.destroyAllWindows()
