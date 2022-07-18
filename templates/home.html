@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/index.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.19.0/dist/full.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="icon" type="image/png" href="/static/favicon.png" />
+    <script src="/static/opencv.js" type="text/javascript"></script>
+    <script src="/static/parabola_manipulation.js" type="text/javascript"></script>
+    <script src="/static/main.js"></script>
+    <title>Table Tennis Game Annotator</title>
+</head>
+<body class="font-sans">
+    <div id="video_upload" class="flex items-center flex-col h-screen">
+        <p class="text-4xl py-5">Table Tennis Game Annotator</p>
+        <div class="flex flex-col flex-grow justify-center items-center text-center pb-[60] px-20 gap-y-7">
+            <p class="text-lg">This website aims to provide useful statistics by annotating the table tennis gameplay in
+                real-time while also providing a dashboard that contains this data in realtime and after the game.</p>
+            <label id="styled_file_input_ui"
+                class="flex justify-center w-7/12 h-32 px-4 transition bg-white dark:bg-slate-800 border-2 border-gray-300 border-dashed rounded-md appearance-none cursor-pointer hover:border-gray-400 focus:outline-none">
+                <div class="flex items-center justify-center flex-col space-x-2 space-y-2">
+                    <span class="flex items-center text-gray-600 dark:text-white">
+                        <span class="material-symbols-outlined w-6 h-6">cloud_upload</span>
+                        <span class="font-medium">
+                            Drop a video to attach, or
+                            <span class="text-blue-600 underline">browse</span>
+                        </span>
+                    </span>
+                    <p id="file_display_area">No file chosen</p>
+                </div>
+                <input type="file" name="file_upload" class="hidden" accept="video/*">
+            </label>
+            <div class="pt-5">
+                <button id="submit_gameplay_button" class="btn btn-success">Analyze gameplay in realtime</button>
+            </div>
+        </div>
+    </div>
+    <div id="video_analyzation" class="items-center flex-col hidden">
+        <video id="video_element" class="hidden w-4/5"></video>
+        <canvas id="canvas_element" class="w-4/5"></canvas>
+        <!-- <div id="fake_canvas_height_div" class="flex-grow"></div>
+        <div class="pt-5 absolute">
+            <input id="frame_input" type="text" placeholder="Frame Number" class="input input-bordered w-full max-w-xs" />
+        </div>
+        <div class="p-5 relative">
+            <button id="skip_to_frame" class="btn btn-success">Skip to frame</button>
+        </div> -->
+    </div>
+    <div id="toasts"></div>
+</body>
+</html>

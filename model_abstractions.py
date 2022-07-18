@@ -30,7 +30,7 @@ class YOLOv5_Model(Model):
     def process_opencv_image(self, image):
         return image[..., ::-1]
 
-    def predict(self, image, min_confidence=0.4):
+    def predict(self, image, min_confidence=0):
         results = self.model(image)
         df = results.pandas().xyxy[0][["confidence", "name"]]
         df["confidence"] = df[df["confidence"] > min_confidence]["confidence"]
