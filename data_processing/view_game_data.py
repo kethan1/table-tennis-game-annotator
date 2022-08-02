@@ -35,11 +35,7 @@ while True:
             1,
         )
 
-        cv2.imshow("Frame", frame)
-        cv2.waitKey(0)
-
-    cv2.imshow("Frame", frame)
-
+    cv2.imshow("Annotated Game", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
