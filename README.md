@@ -18,3 +18,51 @@ For the ball detection model, I chose to use [YOLOv5](https://github.com/ultraly
 
 ### Instance Segmentation Model
 For the instance segmentation model, I forked the [Mask R-CNN implementation by matterport](https://github.com/matterport/Mask_RCNN) to [Mask R-CNN TF2](https://github.com/kethan1/Mask_RCNN_TF2) and added support for Tensorflow 2 and the latest version of scikit-image.
+
+## Run the Server
+
+To run the server, install [Poetry](https://python-poetry.org/) (Poetry's version needs to be >=1.2, so you may have to download a pre-release version) and [Node.js](https://nodejs.org/).
+
+Then, install the needed plugins and Python dependencies with the commands:
+```
+poetry self add 'poethepoet[poetry_plugin]'
+poetry install
+```
+
+Install the Node dependencies with the command:
+```
+npm install
+```
+
+To build the wasm binaries, emscripten is required. 
+
+To install emscripten, run the following commands:
+```
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+./emsdk install latest
+./emsdk activate latest
+```
+To reactivate emscripten, run the following command:
+```
+source emsdk/emsdk_env.sh
+```
+Then download the ncnn webassembly package and extract it in the root folder of this repository.
+```
+wget https://github.com/Tencent/ncnn/releases/download/20220721/ncnn-20220701-webassembly.zip
+unzip ncnn-20220721-webassembly.zip
+```
+
+To build the wasm_binaries, run:
+```
+poetry poe build_wasm
+```
+
+Then run:
+```
+poetry poe watch
+```
+And run the below command in a different terminal:
+```
+poetry poe server
+```
