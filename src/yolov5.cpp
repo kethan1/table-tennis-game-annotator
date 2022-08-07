@@ -11,13 +11,13 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-#include "yolov5.h"
+#include "yolov5.hpp"
 
 #include <cpu.h>
 #include <float.h>
 #include <simpleocv.h>
 
-#include "globals.h"
+#include "globals.hpp"
 
 static inline float intersection_area(const Detection& a, const Detection& b) {
     cv::Rect_<float> inter = a.rect & b.rect;

@@ -13,9 +13,9 @@
 
 #include <simpleocv.h>
 
-#include "globals.h"
+#include "globals.hpp"
 #include "stdint.h"
-#include "yolov5.h"
+#include "yolov5.hpp"
 
 static YOLOv5 *g_yolov5 = 0;
 
