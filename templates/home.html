@@ -10,8 +10,11 @@
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="icon" type="image/png" href="/static/favicon.png" />
     <script src="/static/opencv.js" type="text/javascript"></script>
-    <script src="/static/parabola_manipulation.js" type="text/javascript"></script>
+    <script src="/static/parabola-manipulation.js" type="text/javascript"></script>
+    <script src="/static/wasm-feature-detect.js"></script>
+    <script src="/static/utils.js"></script>
     <script src="/static/main.js"></script>
+    
     <title>Table Tennis Game Annotator</title>
 </head>
 <body class="font-sans">
@@ -42,13 +45,6 @@
     <div id="video_analyzation" class="items-center flex-col hidden">
         <video id="video_element" class="hidden w-4/5"></video>
         <canvas id="canvas_element" class="w-4/5"></canvas>
-        <!-- <div id="fake_canvas_height_div" class="flex-grow"></div>
-        <div class="pt-5 absolute">
-            <input id="frame_input" type="text" placeholder="Frame Number" class="input input-bordered w-full max-w-xs" />
-        </div>
-        <div class="p-5 relative">
-            <button id="skip_to_frame" class="btn btn-success">Skip to frame</button>
-        </div> -->
     </div>
     <div id="toasts"></div>
 </body>

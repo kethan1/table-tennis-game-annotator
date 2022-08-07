@@ -22,21 +22,42 @@ scipy = "^1.8.1"
 torchvision = "^0.13.0"
 protobuf = "<4.21.3"
 seaborn = "^0.11.2"
+imagesize = "^1.4.1"
 
 [tool.poetry.dev-dependencies]
 tqdm = "^4.64.0"
 
 [tool.poe.tasks.watch]
 shell = "npx parcel watch templates/*.html --no-source-maps --dist-dir dist"
-interpreter = ["pwsh", "posix"]
+interpreter = ["powershell", "posix"]
 
 [tool.poe.tasks.build]
 shell = "npx parcel build templates/*.html --no-source-maps --dist-dir dist"
-interpreter = ["pwsh", "posix"]
+interpreter = ["powershell", "posix"]
 
 [tool.poe.tasks.server]
 shell = "poetry run python app.py"
-interpreter = ["pwsh", "posix"]
+interpreter = ["powershell", "posix"]
+
+[tool.poe.tasks.build_basic_wasm]
+shell = '''python os_switcher.py --windows 'mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=\"{env:EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake\" -DWASM_FEATURE=basic -G \"Unix Makefiles\" .. && cmake --build . --config Release -j 4 && move yolov5* ../static/wasm_modules && cd .. && del /s /q build > NUL && rmdir /s /q build' --linux 'mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=\"{env:EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake\" -DWASM_FEATURE=basic -G \"Unix Makefiles\" .. && cmake --build . --config Release -j 4 && mv yolov5* ../static/wasm_modules && cd .. && rm -r build''''
+interpreter = ["powershell", "posix"]
+
+[tool.poe.tasks.build_simd_wasm]
+shell = '''python os_switcher.py --windows 'mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=\"{env:EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake\" -DWASM_FEATURE=simd -G \"Unix Makefiles\" .. && cmake --build . --config Release -j 4 && move yolov5* ../static/wasm_modules && cd .. && del /s /q build > NUL && rmdir /s /q build' --linux 'mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=\"{env:EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake\" -DWASM_FEATURE=simd -G \"Unix Makefiles\" .. && cmake --build . --config Release -j 4 && mv yolov5* ../static/wasm_modules && cd .. && rm -r build''''
+interpreter = ["powershell", "posix"]
+
+[tool.poe.tasks.build_threads_wasm]
+shell = '''python os_switcher.py --windows 'mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=\"{env:EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake\" -DWASM_FEATURE=threads -G \"Unix Makefiles\" .. && cmake --build . --config Release -j 4 && move yolov5* ../static/wasm_modules && cd .. && del /s /q build > NUL && rmdir /s /q build' --linux 'mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=\"{env:EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake\" -DWASM_FEATURE=threads -G \"Unix Makefiles\" .. && cmake --build . --config Release -j 4 && mv yolov5* ../static/wasm_modules && cd .. && rm -r build''''
+interpreter = ["powershell", "posix"]
+
+[tool.poe.tasks.build_simd_threads_wasm]
+shell = '''python os_switcher.py --windows 'mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=\"{env:EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake\" -DWASM_FEATURE=simd-threads -G \"Unix Makefiles\" .. && cmake --build . --config Release -j 4 && move yolov5* ../static/wasm_modules && cd .. && del /s /q build > NUL && rmdir /s /q build' --linux 'mkdir build && cd build && cmake -DCMAKE_TOOLCHAIN_FILE=\"{env:EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake\" -DWASM_FEATURE=simd-threads -G \"Unix Makefiles\" .. && cmake --build . --config Release -j 4 && mv yolov5* ../static/wasm_modules && cd .. && rm -r build''''
+interpreter = ["powershell", "posix"]
+
+[tool.poe.tasks.build_wasm]
+shell = "poetry poe build_basic && poetry poe build_simd && poetry poe build_threads && poetry poe build_simd_threads"
+interpreter = ["powershell", "posix"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

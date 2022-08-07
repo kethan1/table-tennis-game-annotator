@@ -1,4 +1,26 @@
-window.addEventListener("load", (event) => {
+let wasmModuleLoaded = new VariableWatcher(false);
+let wasmModuleLoadedCallbacks = [];
+
+var Module = {
+    locateFile: file => `/static/wasm_modules/${file}`,
+    print: text => console.log(text),
+    onRuntimeInitialized: () => {
+        wasmModuleLoaded.variable = true;
+        for (let callback of wasmModuleLoadedCallbacks) {
+            callback();
+        }
+    },
+    yolov5_ncnn_inference_wrapper: (dst, w, h, outputArrayPtr, outputArr) => {
+        Module._yolov5_ncnn_inference(dst, w, h, outputArrayPtr, outputArr.length);
+    
+        return Module.HEAPF32.subarray(outputArrayPtr >> 2, (outputArrayPtr >> 2) + 8);
+    }
+};
+
+let dst = null;
+
+window.addEventListener("load", event => {
+    load_wasm_module();
     let fileInput = document.querySelector("input[name='file_upload']");
     let fileDisplayArea = document.getElementById("file_display_area");
     let styledFileInputUI = document.getElementById("styled_file_input_ui");
@@ -6,33 +28,7 @@ window.addEventListener("load", (event) => {
     let submitGameplayButton = document.getElementById("submit_gameplay_button");
     let videoAnalyzationDiv = document.getElementById("video_analyzation");
     let canvas = document.getElementById("canvas_element");
-    // let fakeCanvasHeightDiv = document.getElementById("fake_canvas_height_div");
-    // let skipToFrame = document.getElementById("skip_to_frame");
-    // let frameInput = document.getElementById("frame_input");
     let toasts = document.getElementById("toasts");
-
-    function showToast(message="", positionClasses=[], toastType="info", timeout=3000) {
-        if (!["info", "success", "warning", "danger"].includes(toastType)) {
-            toastType = "info";
-        }
-        let toastWrapper = document.createElement("div");
-        toastWrapper.classList.add("toast", "opacity-100", ...positionClasses);
-        let toast = document.createElement("div");
-        toast.classList.add("alert", `alert-${toastType}`);
-        let messageSpan = document.createElement("span");
-        messageSpan.innerText = message;
-        toast.appendChild(messageSpan);
-        toastWrapper.appendChild(toast);
-        toasts.appendChild(toastWrapper);
-        setTimeout(() => {
-            toast.classList.add("animate-fade");
-            setTimeout(() => {
-                toastWrapper.remove();
-            }, 500)
-        }, timeout);
-    }
-
-    globalThis.showToast = showToast;
 
     fileInput.addEventListener("change", event => {
         let fileName = fileInput.files[0].name;
@@ -48,15 +44,15 @@ window.addEventListener("load", (event) => {
       
         if (event.dataTransfer.items) {
             if (event.dataTransfer.items.length > 1) {
-                showToast("You can only upload one file at a time.", [], toastType="warning");
+                showToast(toasts, "You can only upload one file at a time.", [], toastType="warning");
                 return;
             } else if (event.dataTransfer.items.length === 0) {
-                showToast("No file selected.", [], toastType="warning");
+                showToast(toasts, "No file selected.", [], toastType="warning");
                 return;
             }
             const file = event.dataTransfer.items[0].getAsFile();
             if (!file.type.includes("video/")) {
-                showToast("You can only upload videos.", toastType="warning");
+                showToast(toasts, "You can only upload videos.", toastType="warning");
                 return;
             }
             fileInput.files = event.dataTransfer.files;
@@ -65,8 +61,7 @@ window.addEventListener("load", (event) => {
 
     submitGameplayButton.addEventListener("click", event => {
         if (fileInput.files.length < 1) {
-            var toastType;
-            showToast("No file selected.", [], toastType="warning");
+            showToast(toasts, "No file selected.", [], "warning");
             return;
         }
 
@@ -77,140 +72,122 @@ window.addEventListener("load", (event) => {
         drawingLoop();
     });
 
-    // skipToFrame.addEventListener("click", event => {
-    //     videoElement.pause();
-    //     videoElement.play();
-    //     skipFrames(frameInput.value);
-    // });
-
-    let frameIndex = 0;
-
     async function drawingLoop() {
+        if (!wasmModuleLoaded.variable) {
+            await wasmModuleLoaded.waitForSet();
+        }
+
         await videoElement.play();
 
         const {videoWidth, videoHeight} = videoElement;
         videoElement.width = videoWidth;
         videoElement.height = videoHeight;
         let tempCanvas = new OffscreenCanvas(videoWidth, videoHeight);
+        let tempCanvasCtx = tempCanvas.getContext("2d");
         let mat = new cv.Mat(videoHeight, videoWidth, cv.CV_8UC4);
         let sameDirBallDetections = [];
+        let ball;
 
         const cap = new cv.VideoCapture(videoElement);
 
-        while (true) {
+        let dstLength = (new ImageData(videoElement.videoWidth, videoElement.videoHeight)).data.length;
+        dst = Module._malloc(dstLength);
+
+        let [outputPtr, outputArray] = transferNumberArrayToHeap([0, 0, 0, 0, 0, 0, 0, 0], TYPES.f32);
+
+        let frameIndex = 0;
+
+        while (!videoElement.ended && !videoElement.paused) {
             frameIndex++;
-            cap.read(mat);
-            videoElement.pause();
-            cv.imshow(tempCanvas, mat);
-            const blob = await tempCanvas.convertToBlob();
+            if (frameIndex % 2 == 0) {
+                cap.read(mat);
+                cv.imshow(tempCanvas, mat);
+                videoElement.pause();
 
-            let formData = new FormData();
-            formData.append("file", blob);
+                let imageData = tempCanvasCtx.getImageData(0, 0, canvas.width, canvas.height);
+                let data = imageData.data;
 
-            let response = await fetch("/api/v1/detect-ball", {
-                method: "POST",
-                body: formData,
-            });
-            let ball = await response.json();
+                Module.HEAPU8.set(data, dst);
 
-            if (Object.keys(ball).length) {
-                let {xmin, xmax, ymin, ymax} = ball;
-                sameDirBallDetections.push(ball);
-                if (sameDirBallDetections.length > 2) {
-                    let prevPrevBall = sameDirBallDetections.at(-3);
-                    let prevBall = sameDirBallDetections.at(-2);
-                    let prevXMoved = prevPrevBall.xmin - prevBall.xmin;
-                    let prevYMoved = prevPrevBall.ymin - prevBall.ymin;
-                    let currentXMoved = prevBall.xmin - xmin;
-                    let currentYMoved = prevBall.ymin - ymin;
-                    if (prevXMoved * currentXMoved < 0 || prevYMoved * currentYMoved < 0) {
-                        sameDirBallDetections = sameDirBallDetections.slice(-2);
-                    } else {
-                        let equation = calculateParabolaEquation(
-                            avg(prevPrevBall.xmin, prevPrevBall.xmax),
-                            avg(prevPrevBall.ymim, prevPrevBall.ymax),
-                            avg(prevBall.xmin, prevBall.xmax),
-                            avg(prevBall.ymin, prevBall.ymax),
-                            avg(xmin, xmax),
-                            avg(ymin, ymax),
-                        );
-                        for (let x=0; x < mat.shape[1]; x+=5) {
-                            cv.circle(
-                                mat,
-                                new cv.Point(x, equation(x)),
-                                2,
-                                [0, 255, 0, 255],
-                                -1,
+                let detection = Module.yolov5_ncnn_inference_wrapper(dst, imageData.width, imageData.height, outputPtr, outputArray);
+
+                ball = {};
+                if (detection.some(item => item !== 0)) {
+                    ball.xmin = detection[0];
+                    ball.ymin = detection[1];
+                    ball.xmax = detection[0] + detection[2];
+                    ball.ymax = detection[1] + detection[3];
+                    ball.width = detection[2];
+                    ball.height = detection[3];
+                    ball.label = detection[4];
+                    ball.confidence = detection[5];
+
+                    console.log(ball);
+
+                    let {xmin, xmax, ymin, ymax} = ball;
+                    sameDirBallDetections.push(ball);
+                    if (sameDirBallDetections.length > 2) {
+                        let prevPrevBall = sameDirBallDetections.at(-3);
+                        let prevBall = sameDirBallDetections.at(-2);
+                        let prevXMoved = prevPrevBall.xmin - prevBall.xmin;
+                        let prevYMoved = prevPrevBall.ymin - prevBall.ymin;
+                        let currentXMoved = prevBall.xmin - xmin;
+                        let currentYMoved = prevBall.ymin - ymin;
+                        if (prevXMoved * currentXMoved < 0 || prevYMoved * currentYMoved < 0) {
+                            sameDirBallDetections = sameDirBallDetections.slice(-2);
+                        } else {
+                            let equation = calculateParabolaEquation(
+                                avg(prevPrevBall.xmin, prevPrevBall.xmax),
+                                avg(prevPrevBall.ymin, prevPrevBall.ymax),
+                                avg(prevBall.xmin, prevBall.xmax),
+                                avg(prevBall.ymin, prevBall.ymax),
+                                avg(xmin, xmax),
+                                avg(ymin, ymax),
                             );
+                            for (let x=0; x < mat.cols; x+=5) {
+                                cv.circle(
+                                    mat,
+                                    new cv.Point(x, Math.round(equation(x))),
+                                    2,
+                                    [0, 255, 0, 255],
+                                    -1,
+                                );
+                            }
+
+                            for (let pastBall of sameDirBallDetections) {
+                                cv.circle(
+                                    mat,
+                                    new cv.Point(
+                                        Math.round(avg(pastBall.xmin, pastBall.xmax)),
+                                        Math.round(avg(pastBall.ymin, pastBall.ymax)),
+                                    ),
+                                    9,
+                                    [255, 0, 0, 255],
+                                    -1
+                                );
+                            }
                         }
                     }
+                    cv.circle(
+                        mat,
+                        new cv.Point(
+                            Math.round(avg(xmin, xmax)),
+                            Math.round(avg(ymin, ymax)),
+                        ),
+                        9,
+                        [255, 0, 0, 255],
+                        -1
+                    );             
                 }
-                for (let pastBall of sameDirBallDetections) {
-                    cv.circle(mat, new cv.Point(avg(pastBall.xmin, pastBall.xmax), avg(pastBall.ymin, pastBall.ymax)), 9, [255, 0, 0, 255], -1);
-                }
-            }
 
-            cv.imshow(canvas, mat);
-            await videoElement.play();
-            if (videoElement.ended || frameIndex === 30) {
-                break;
+                cv.imshow(canvas, mat);
+                await videoElement.play();
+            } else {
+                await new Promise(resolve => setTimeout(resolve, 25));
             }
         }
         mat.delete();
-        
-        // if (frameIndex % 5 === 0) {
-        //     const bitmap = await createImageBitmap(videoElement);
-        //     videoElement.pause();
-            
-        //     if (!heightsSet) {
-        //         canvas.height = canvasDrawing.height = fakeCanvasHeightDiv.height = bitmap.height * canvas.width / bitmap.width;
-        //         heightsSet = true;
-        //     }
-        //     const bitmap_ctx = canvas.getContext("bitmaprenderer");
-        //     bitmap_ctx.transferFromImageBitmap(bitmap);
-        //     const blob = await new Promise((res) => canvas.toBlob(res));
-            
-        //     let formData = new FormData();
-        //     formData.append("file", blob);
-
-        //     let response = await fetch("/api/v1/detect-ball", {
-        //         method: "POST",
-        //         body: formData,
-        //     })
-        //     let data = await response.json();
-        //     console.log(data);
-        //     if (Object.keys(data).length) {
-        //         ctx.beginPath();
-        //         let widthRatio = canvas.width / videoElement.videoWidth;
-        //         let heightRatio = canvas.height / videoElement.videoHeight;
-        //         console.log(Math.round(avg(data.xmin, data.xmax) * widthRatio), Math.round(avg(data.ymin, data.ymax) * heightRatio), widthRatio, heightRatio);
-        //         ctx.arc(Math.round(avg(data.xmin, data.xmax) * widthRatio), Math.round(avg(data.ymin, data.ymax) * heightRatio), 4, 0, 2 * Math.PI);
-        //         ctx.fillStyle = "red";
-        //         ctx.fill();
-        //         ctx.lineWidth = 2;
-        //         ctx.stroke();
-        //     }
-        // }
-
-        // if (!videoElement.ended) {
-        //     // TODO: send to server and ask for ball detection stuff and draw
-        //     await videoElement.play();
-        //     frameIndex += 1;
-        //     videoElement.requestVideoFrameCallback(drawingLoop);
-        // }
+        Module._free(dst);
+        Module._free(outputPtr);
     };
-
-    function avg(a, b) {
-        return (a + b) / 2;
-    }
-
-    // function skipFrames(frames, callback=drawingLoop) {
-    //     console.log(1, frames);
-    //     if (frames > 0) {
-    //         videoElement.requestVideoFrameCallback((timestamp, frame) => skipFrames(frames - 1, callback));
-    //     } else {
-    //         console.log(2)
-    //         videoElement.requestVideoFrameCallback(callback);
-    //     }
-    // }
 });
