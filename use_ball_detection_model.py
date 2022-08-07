@@ -7,7 +7,7 @@ from parabola_manipulation import calculate_parabola_equation
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--model", default="data/weights/ball_detection_model.pt", help="path to model"
+    "--model", default="models/ball_detection_model.pt", help="path to model"
 )
 parser.add_argument("--video", default="data/test_4.mp4", help="path to video")
 parser.add_argument(
