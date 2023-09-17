@@ -17,7 +17,7 @@ Instance Segmentation Model Processed Data - https://www.kaggle.com/datasets/ket
 For the ball detection model, I chose to use [YOLOv5](https://github.com/ultralytics/yolov5) for its high accuracy and speed. The [YOLOv5](https://github.com/ultralytics/yolov5) model uses the [YOLOv5m6](https://github.com/ultralytics/yolov5#:~:text=16.8-,YOLOv5m6,-1280) configuration and it was trained on the above mentioned processed data.
 
 ### Instance Segmentation Model
-For the instance segmentation model, I forked the [Mask R-CNN implementation by matterport](https://github.com/matterport/Mask_RCNN) to [Mask R-CNN TF2](https://github.com/kethan1/Mask_RCNN_TF2) and added support for Tensorflow 2 and the latest version of scikit-image.
+For the instance segmentation model, I used the PyTorch Detectron2 Mask-RCNN model. 
 
 ## Run the Server
 
